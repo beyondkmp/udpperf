@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -16,6 +17,8 @@ var numClients = flag.Int("num", 5, "numClients")
 var sizePacket = flag.Int("size", 5, "sizePacket")
 var secondSleep = flag.Int("second", 1, "secondSleep")
 var wg sync.WaitGroup
+
+var size int64
 
 func main() {
 	flag.Parse()
@@ -50,16 +53,18 @@ func main() {
 				select {
 				case <-timeoutChan:
 					fmt.Println("finish")
-					return
+					break
 				default:
 					_, err = conn.Write(content)
 					if err != nil {
 						fmt.Println("failed:", err)
-						return
+						break
 					}
+					atomic.AddInt64(&size, int64(*sizePacket))
 				}
 			}
 		}()
 	}
 	wg.Wait()
+	fmt.Printf("total send %v B\n", atomic.LoadInt64(&size))
 }
